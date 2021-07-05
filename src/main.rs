@@ -1,5 +1,7 @@
 use std::{
+    borrow::Borrow,
     collections::{HashMap, VecDeque},
+    ops::Index,
     rc::Rc,
 };
 
@@ -56,6 +58,7 @@ impl Graph {
         self.nodes.contains(node)
     }
 
+    // if you add an edge with the same from and to node, it overwrites the weight
     fn add_edge(&mut self, from: &Rc<Node>, to: &Rc<Node>, weight: u32) {
         if self.check_if_node_exist(from) && self.check_if_node_exist(to) {
             if !self.edges.contains_key(from) {
@@ -64,14 +67,23 @@ impl Graph {
                     vec![Edge::from(Rc::clone(from), Rc::clone(to), weight)],
                 );
             } else {
-                self.edges
+                let edge_vec = self
+                    .edges
                     .get_mut(from)
-                    .expect("failed to unwrap vec in add_edge")
-                    .push(Edge::from(Rc::clone(from), Rc::clone(to), weight))
+                    .expect("failed to unwrap vec in add_edge");
+                // if it finds this edge already exist, it overwrites it's weight and returns
+                for edge in edge_vec.iter_mut() {
+                    if &edge.to == to {
+                        edge.weight = weight;
+                        return;
+                    }
+                }
+                edge_vec.push(Edge::from(Rc::clone(from), Rc::clone(to), weight))
             }
         }
     }
 
+    // if you add an edge with the same from and to node, it overwrites the weight
     fn add_edge_by_index(&mut self, from: usize, to: usize, weight: u32) {
         let from_node = self.nodes.get(from).expect("Failed to get from node");
         let to_node = self.nodes.get(to).expect("Failed to get to node");
@@ -81,17 +93,53 @@ impl Graph {
                 vec![Edge::from(Rc::clone(from_node), Rc::clone(to_node), weight)],
             );
         } else {
-            self.edges
+            let edge_vec = self
+                .edges
                 .get_mut(from_node)
-                .expect("failed to unwrap vec in add_edge_by_index")
-                .push(Edge::from(Rc::clone(from_node), Rc::clone(to_node), weight))
+                .expect("failed to unwrap vec in add_edge");
+            // if it finds this edge already exist, it overwrites it's weight and returns
+            for edge in edge_vec.iter_mut() {
+                if &edge.to == to_node {
+                    edge.weight = weight;
+                    return;
+                }
+            }
+            edge_vec.push(Edge::from(Rc::clone(from_node), Rc::clone(to_node), weight))
         }
     }
 
-    fn BFS(&self, start: &Rc<Node>) {
+    fn bfs(&self, start: &Rc<Node>) {
         if self.check_if_node_exist(start) {
-            let mut visited = vec![false; self.nodes.len()];
+            // hashmap of what nots have been visited
+            let mut visited: HashMap<Rc<Node>, bool> = HashMap::new();
+            for node in self.nodes.iter() {
+                visited.insert(Rc::clone(&node), false);
+            }
+
             let mut queue: VecDeque<&Rc<Node>> = VecDeque::new();
+
+            *visited.get_mut(start).unwrap() = true;
+            queue.push_back(start);
+
+            // for (n, b) in visited.iter() {
+            //     print!("{} {}, ", n.name, b);
+            // }
+            // println!();
+
+            while queue.len() > 0 {
+                // Dequeue the front of the queue
+                let current_node = queue.pop_front().unwrap();
+                print!("{} ", current_node.name);
+
+                // get all the adj vertices of that node
+                let adjs = self.edges.get(current_node).unwrap();
+                for adj in adjs.iter() {
+                    if !visited.get(&adj.to).unwrap() {
+                        *visited.get_mut(&adj.to).unwrap() = true;
+                        queue.push_back(&adj.to);
+                    }
+                }
+            }
         }
     }
 
@@ -113,9 +161,15 @@ fn main() {
     let a = graph.add_node(String::from("a"));
     let b = graph.add_node(String::from("b"));
     let c = graph.add_node(String::from("c"));
+    let d = graph.add_node(String::from("d"));
     println!("does a exist {}", graph.check_if_node_exist(&a));
-    graph.add_edge_by_index(0, 1, 32);
+    graph.add_edge_by_index(0, 1, 5);
     graph.add_edge(&a, &b, 20);
-    graph.add_edge(&b, &c, 2);
+    graph.add_edge(&a, &c, 2);
+    graph.add_edge(&b, &c, 5);
+    graph.add_edge(&c, &a, 5);
+    graph.add_edge(&c, &d, 5);
+    graph.add_edge(&d, &d, 5);
     graph.print();
+    graph.bfs(&c);
 }
