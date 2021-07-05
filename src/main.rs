@@ -1,7 +1,5 @@
 use std::{
-    borrow::Borrow,
     collections::{HashMap, VecDeque},
-    ops::Index,
     rc::Rc,
 };
 
@@ -132,11 +130,16 @@ impl Graph {
                 print!("{} ", current_node.name);
 
                 // get all the adj vertices of that node
-                let adjs = self.edges.get(current_node).unwrap();
-                for adj in adjs.iter() {
-                    if !visited.get(&adj.to).unwrap() {
-                        *visited.get_mut(&adj.to).unwrap() = true;
-                        queue.push_back(&adj.to);
+                let adjs = self.edges.get(current_node);
+                match adjs {
+                    None => {}
+                    Some(adjs) => {
+                        for adj in adjs.iter() {
+                            if !visited.get(&adj.to).unwrap() {
+                                *visited.get_mut(&adj.to).unwrap() = true;
+                                queue.push_back(&adj.to);
+                            }
+                        }
                     }
                 }
             }
@@ -169,7 +172,7 @@ fn main() {
     graph.add_edge(&b, &c, 5);
     graph.add_edge(&c, &a, 5);
     graph.add_edge(&c, &d, 5);
-    graph.add_edge(&d, &d, 5);
+    // graph.add_edge(&d, &d, 5);
     graph.print();
     graph.bfs(&c);
 }
