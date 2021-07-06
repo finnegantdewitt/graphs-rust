@@ -19,16 +19,15 @@ impl Edge {
 pub struct Node {
     name: String,
 }
+impl Node {
+    fn from(name: String) -> Node {
+        Node { name }
+    }
+}
 
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
-    }
-}
-
-impl Node {
-    fn from(name: String) -> Node {
-        Node { name }
     }
 }
 
@@ -106,12 +105,15 @@ impl Graph {
         }
     }
 
-    fn bfs(&self, start: &Rc<Node>) {
+    // Breath first tree traversal
+    fn bft(&self, start: &Rc<Node>) -> Option<Vec<Rc<Node>>> {
         if self.check_if_node_exist(start) {
+            let mut vec_to_return: Vec<Rc<Node>> = Vec::new();
+
             // hashmap of what nots have been visited
-            let mut visited: HashMap<Rc<Node>, bool> = HashMap::new();
+            let mut visited: HashMap<&Rc<Node>, bool> = HashMap::new();
             for node in self.nodes.iter() {
-                visited.insert(Rc::clone(&node), false);
+                visited.insert(node, false);
             }
 
             let mut queue: VecDeque<&Rc<Node>> = VecDeque::new();
@@ -119,15 +121,10 @@ impl Graph {
             *visited.get_mut(start).unwrap() = true;
             queue.push_back(start);
 
-            // for (n, b) in visited.iter() {
-            //     print!("{} {}, ", n.name, b);
-            // }
-            // println!();
-
             while queue.len() > 0 {
                 // Dequeue the front of the queue
                 let current_node = queue.pop_front().unwrap();
-                print!("{} ", current_node.name);
+                vec_to_return.push(Rc::clone(current_node));
 
                 // get all the adj vertices of that node
                 let adjs = self.edges.get(current_node);
@@ -143,6 +140,43 @@ impl Graph {
                     }
                 }
             }
+            Some(vec_to_return)
+        } else {
+            None
+        }
+    }
+
+    fn dft(&self, start: &Rc<Node>) -> Option<Vec<Rc<Node>>> {
+        if self.check_if_node_exist(start) {
+            let mut vec_to_return: Vec<Rc<Node>> = Vec::new();
+
+            let mut visited: HashMap<&Rc<Node>, bool> = HashMap::new();
+            for node in self.nodes.iter() {
+                visited.insert(node, false);
+            }
+
+            let mut stack = Vec::new();
+            stack.push(start);
+
+            while stack.len() > 0 {
+                let current_node = stack.pop().unwrap();
+                if !visited.get(&current_node).unwrap() {
+                    vec_to_return.push(Rc::clone(current_node));
+                    *visited.get_mut(&current_node).unwrap() = true;
+                    match self.edges.get(current_node) {
+                        None => {}
+                        Some(edges) => {
+                            for edge in edges {
+                                stack.push(&edge.to);
+                            }
+                        }
+                    }
+                }
+            }
+
+            Some(vec_to_return)
+        } else {
+            None
         }
     }
 
@@ -159,6 +193,21 @@ impl Graph {
     }
 }
 
+fn print_node_vec(vec: Vec<Rc<Node>>) {
+    for node in vec {
+        print!("{} ", node.name);
+    }
+    println!();
+}
+
+fn factorial(n: i64) -> i64 {
+    if n == 1 {
+        n
+    } else {
+        n * factorial(n - 1)
+    }
+}
+
 fn main() {
     let mut graph: Graph = Graph::new();
     let a = graph.add_node(String::from("a"));
@@ -172,7 +221,30 @@ fn main() {
     graph.add_edge(&b, &c, 5);
     graph.add_edge(&c, &a, 5);
     graph.add_edge(&c, &d, 5);
-    // graph.add_edge(&d, &d, 5);
+    graph.add_edge(&d, &d, 5);
     graph.print();
-    graph.bfs(&c);
+
+    println!("Recursion test 3!={} 6!={}", factorial(3), factorial(6));
+
+    let bft_result = graph.bft(&c);
+    match bft_result {
+        None => {
+            println!("Failed to create bft graph");
+        }
+        Some(bft) => {
+            println!("BFT: ");
+            print_node_vec(bft);
+        }
+    }
+
+    let dft_result = graph.dft(&c);
+    match dft_result {
+        None => {
+            println!("Failed to create dft graph");
+        }
+        Some(dft) => {
+            println!("DFT: ");
+            print_node_vec(dft);
+        }
+    }
 }
