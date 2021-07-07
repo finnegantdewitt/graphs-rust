@@ -19,16 +19,30 @@ struct Cell {
     y: u32,
 }
 
+impl Cell {
+    fn new() -> Cell {
+        Cell {
+            is_wall: true,
+            x: 0,
+            y: 0,
+        }
+    }
+}
+
 pub struct Maze {
     width: u32,
     height: u32,
-    cells: Vec<Cell>,
+    cells: Vec<Rc<Cell>>,
+    start: Rc<Cell>,
+    end: Rc<Cell>,
 }
 
 impl Maze {
     // create a maze from image buffer
     fn from(image_buff: Vec<u8>, width: u32, height: u32) -> Maze {
-        let mut cells: Vec<Cell> = Vec::new();
+        let mut cells: Vec<Rc<Cell>> = Vec::new();
+        let mut start: Rc<Cell> = Rc::new(Cell::new());
+        let mut end: Rc<Cell> = Rc::new(Cell::new());
 
         // populate cells
         for i in 0..(width * height) {
@@ -42,21 +56,54 @@ impl Maze {
                 && image_buff[(i * 3 + 2) as usize] == 255
             {
                 cell.is_wall = false;
-                cells.push(cell);
+                if cell.y == 0 {
+                    let ref_cell = Rc::new(cell);
+                    let clone_cell = Rc::clone(&ref_cell);
+                    cells.push(ref_cell);
+                    start = Rc::clone(&clone_cell);
+                } else if cell.y == width - 1 {
+                    let ref_cell = Rc::new(cell);
+                    let clone_cell = Rc::clone(&ref_cell);
+                    cells.push(ref_cell);
+                    end = Rc::clone(&clone_cell);
+                } else {
+                    let ref_cell = Rc::new(cell);
+                    cells.push(ref_cell);
+                }
             } else {
-                cells.push(cell);
+                cells.push(Rc::new(cell));
             }
+        }
+
+        if start.is_wall {
+            panic!("Failed to find maze start");
+        }
+        if end.is_wall {
+            panic!("Failed to find the exit of the maze");
         }
 
         Maze {
             width,
             height,
             cells,
+            start,
+            end,
         }
     }
 
+    // fn bfs(&self) -> Vec<Rc<Cell>> {
+    //     let path: Vec<Rc<Cell>> = Vec::new();
+    //     let visited = vec![false; (self.width * self.height) as usize];
+
+    //     path
+    // }
+
     fn print(&self) {
         println!("width: {} height: {}", self.width, self.height);
+        println!(
+            "Start {} {} end: {} {}",
+            self.start.x, self.start.y, self.end.x, self.end.y
+        );
         for (i, cell) in self.cells.iter().enumerate() {
             if cell.is_wall {
                 //print!("0")
