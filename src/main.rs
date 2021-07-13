@@ -19,9 +19,9 @@ fn print_node_vec(vec: Vec<Rc<Node>>) {
 // 0, 0 at top left
 struct Cell {
     is_wall: bool,
+    is_visited: bool,
     x: u32,
     y: u32,
-    isVisited: bool,
 }
 
 impl Cell {
@@ -30,7 +30,7 @@ impl Cell {
             is_wall: true,
             x: 0,
             y: 0,
-            isVisited: false,
+            is_visited: false,
         }
     }
     fn from(is_wall: bool, x: u32, y: u32) -> Cell {
@@ -38,7 +38,7 @@ impl Cell {
             is_wall,
             x,
             y,
-            isVisited: false,
+            is_visited: false,
         }
     }
 }
@@ -101,25 +101,91 @@ impl Maze {
         }
     }
 
+    fn coords_to_vec_location(&self, x: u32, y: u32) -> usize {
+        ((self.height * y) + x) as usize
+    }
+
     fn cell_location_in_vec(&self, cell: &CellRef) -> usize {
-        ((self.height * cell.borrow().y) + cell.borrow().x) as usize
+        self.coords_to_vec_location(cell.borrow().x, cell.borrow().y)
+    }
+
+    // gets all unvisited neighbors
+    fn get_neighbors(&self, cell: &CellRef) -> Vec<CellRef> {
+        let mut neighbors: Vec<CellRef> = Vec::new();
+
+        // print!("Checking ({}_{})", cell.borrow().x, cell.borrow().y);
+
+        let cell = cell.borrow();
+
+        // check cell above
+        if cell.y > 0 {
+            let cell_above = self
+                .cells
+                .get(self.coords_to_vec_location(cell.x, cell.y - 1))
+                .unwrap();
+            if !cell_above.borrow().is_wall && !cell_above.borrow().is_visited {
+                neighbors.push(Rc::clone(cell_above));
+            }
+        }
+
+        // check cell below
+        if cell.y < self.height - 1 {
+            let cell_below = self
+                .cells
+                .get(self.coords_to_vec_location(cell.x, cell.y + 1))
+                .unwrap();
+            if !cell_below.borrow().is_wall && !cell_below.borrow().is_visited {
+                neighbors.push(Rc::clone(cell_below));
+            }
+        }
+
+        // check cell left
+        if cell.x > 0 {
+            let cell_left = self
+                .cells
+                .get(self.coords_to_vec_location(cell.x - 1, cell.y))
+                .unwrap();
+            if !cell_left.borrow().is_wall && !cell_left.borrow().is_visited {
+                neighbors.push(Rc::clone(cell_left));
+            }
+        }
+
+        // check cell right
+        if cell.x < self.width - 1 {
+            let cell_right = self
+                .cells
+                .get(self.coords_to_vec_location(cell.x + 1, cell.y))
+                .unwrap();
+            if !cell_right.borrow().is_wall && !cell_right.borrow().is_visited {
+                neighbors.push(Rc::clone(cell_right));
+            }
+        }
+
+        neighbors
     }
 
     fn bfs(&self) -> Vec<CellRef> {
         let mut path: Vec<CellRef> = Vec::new();
-        let mut visited = vec![false; (self.width * self.height) as usize];
+        //let mut visited = vec![false; (self.width * self.height) as usize];
 
-        let mut queue: VecDeque<&CellRef> = VecDeque::new();
+        let mut queue: VecDeque<CellRef> = VecDeque::new();
 
-        let idx = self.cell_location_in_vec(&self.start);
+        //let idx = self.cell_location_in_vec(&self.start);
 
         // mark start as visited
-        *visited.get_mut(idx).unwrap() = true;
+        //*visited.get_mut(idx).unwrap() = true;
 
-        queue.push_back(&self.start);
+        self.start.borrow_mut().is_visited = true;
+        queue.push_back(Rc::clone(&self.start));
 
         while queue.len() > 0 {
             let current_cell = queue.pop_front().unwrap();
+            current_cell.borrow_mut().is_visited = true;
+            for cell in self.get_neighbors(&current_cell) {
+                print!("({}_{})", cell.borrow().x, cell.borrow().y);
+                queue.push_back(Rc::clone(&cell));
+            }
+            println!();
         }
 
         path
@@ -196,4 +262,5 @@ fn main() {
 
     let maze = Maze::from(buf, info.width, info.height);
     maze.print();
+    maze.bfs();
 }
