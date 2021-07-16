@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
+use std::hash::Hash;
 use std::rc::Rc;
 use std::{fs::File, usize};
 
@@ -7,6 +8,12 @@ mod graph;
 use crate::graph::{Graph, Node};
 
 type CellRef = Rc<RefCell<Cell>>;
+
+// impl Eq for CellRef {
+// fn eq(&self, other: &Self) -> bool {
+//     self.borrow().x == other.borrow().x && self.borrow().y == other.borrow().y
+// }
+// }
 
 fn print_node_vec(vec: Vec<Rc<Node>>) {
     for node in vec {
@@ -17,6 +24,7 @@ fn print_node_vec(vec: Vec<Rc<Node>>) {
 
 // cell is a location in maze, has x, y coordinate
 // 0, 0 at top left
+#[derive(Eq, Hash, Debug)]
 struct Cell {
     is_wall: bool,
     is_visited: bool,
@@ -40,6 +48,11 @@ impl Cell {
             y,
             is_visited: false,
         }
+    }
+}
+impl PartialEq for Cell {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y
     }
 }
 
@@ -164,16 +177,15 @@ impl Maze {
         neighbors
     }
 
-    fn bfs(&self) -> Vec<CellRef> {
-        let mut path: Vec<CellRef> = Vec::new();
-        //let mut visited = vec![false; (self.width * self.height) as usize];
-
+    fn bfs(&self) -> VecDeque<CellRef> {
+        let mut path: VecDeque<CellRef> = VecDeque::new();
         let mut queue: VecDeque<CellRef> = VecDeque::new();
+        //let mut parent_map: HashMap<CellRef, CellRef> = HashMap::new();
 
-        //let idx = self.cell_location_in_vec(&self.start);
-
-        // mark start as visited
-        //*visited.get_mut(idx).unwrap() = true;
+        // it's ok to let 0 mean "cell has no parent" because a corner cell can't be the start of the maze
+        // vector matches the "cells" vector, and each value in the vector contains the index of the cells parent
+        // if value is 0, cell has no parent
+        let mut parent_vec: Vec<usize> = vec![0; self.cells.len()];
 
         self.start.borrow_mut().is_visited = true;
         queue.push_back(Rc::clone(&self.start));
@@ -182,12 +194,72 @@ impl Maze {
             let current_cell = queue.pop_front().unwrap();
             current_cell.borrow_mut().is_visited = true;
             for cell in self.get_neighbors(&current_cell) {
-                print!("({}_{})", cell.borrow().x, cell.borrow().y);
+                //parent_map.insert(Rc::clone(&cell), Rc::clone(&current_cell));
+                parent_vec[self.cell_location_in_vec(&cell)] =
+                    self.cell_location_in_vec(&current_cell);
+                //cell.borrow_mut().parent = Some(Rc::clone(&current_cell));
+                // print!("({}_{})", cell.borrow().x, cell.borrow().y);
+                if cell.borrow().x == self.end.borrow().x && cell.borrow().y == self.end.borrow().y
+                {
+                    break;
+                }
                 queue.push_back(Rc::clone(&cell));
             }
             println!();
         }
 
+        path.push_front(Rc::clone(&self.end));
+        let mut cell_parent = parent_vec[self.cell_location_in_vec(&self.end)];
+
+        while cell_parent != 0 {
+            path.push_front(Rc::clone(&self.cells[cell_parent]));
+            cell_parent = parent_vec[self.cell_location_in_vec(&self.cells[cell_parent])];
+        }
+
+        // if let Some(cell) = self.end.borrow().parent {
+        //     while
+        // }
+        // let path_cell = self.end.borrow().parent;
+
+        //path.push_front(Rc::clone(&self.end));
+
+        // let mut top = Rc::clone(&self.end);
+
+        // loop {
+        //     path.push_front(Rc::clone(&top));
+        //     let parent = &top.get().parent;
+        //     match parent {
+        //         Some(new_top) => {
+        //             top = Rc::clone(new_top);
+        //         }
+        //         None => {
+        //             break;
+        //         }
+        //     }
+        //     //if parent.
+        // }
+
+        // while path.get(0).unwrap().borrow().parent.is_some() {
+        //     path.push_front(Rc::clone(top));
+        // match cell.borrow().parent {
+        //     Some(cell_par) => {
+        //         cell = &cell_par;
+        //     }
+        //     None => {
+        //         break;
+        //     }
+        // }
+        // }
+
+        // match &self.end.borrow().parent {
+        //     Some(parent) => {
+        //         println!("We solved the maze!!");
+        //     }
+        //     None => {
+        //         println!("Failed to solve maze :(");
+        //     }
+        // }
+        self.print_solved(&path);
         path
     }
 
@@ -204,6 +276,29 @@ impl Maze {
             } else {
                 //print!("1");
                 print!("({}_{})", cell.borrow().x, cell.borrow().y);
+            }
+            if (i + 1) as u32 % self.width == 0 {
+                println!();
+            }
+        }
+    }
+
+    fn print_solved(&self, path: &VecDeque<CellRef>) {
+        let start = self.start.borrow();
+        let end = self.end.borrow();
+
+        println!("width: {} height: {}", self.width, self.height);
+        println!("Start {} {} end: {} {}", start.x, start.y, end.x, end.y);
+
+        for (i, cell) in self.cells.iter().enumerate() {
+            if cell.borrow().is_wall {
+                print!("({}.{})", cell.borrow().x, cell.borrow().y);
+            } else {
+                if path.contains(cell) {
+                    print!("({} {})", cell.borrow().x, cell.borrow().y);
+                } else {
+                    print!("({}_{})", cell.borrow().x, cell.borrow().y);
+                }
             }
             if (i + 1) as u32 % self.width == 0 {
                 println!();
@@ -262,5 +357,9 @@ fn main() {
 
     let maze = Maze::from(buf, info.width, info.height);
     maze.print();
-    maze.bfs();
+    // println!("{:?}", maze.bfs());
+    let solved = maze.bfs();
+    for cell in solved.iter() {
+        println!("{} {}", cell.borrow().x, cell.borrow().y);
+    }
 }
