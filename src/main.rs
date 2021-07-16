@@ -2,18 +2,13 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::hash::Hash;
 use std::rc::Rc;
+use std::time::{Duration, Instant};
 use std::{fs::File, usize};
 
 mod graph;
 use crate::graph::{Graph, Node};
 
 type CellRef = Rc<RefCell<Cell>>;
-
-// impl Eq for CellRef {
-// fn eq(&self, other: &Self) -> bool {
-//     self.borrow().x == other.borrow().x && self.borrow().y == other.borrow().y
-// }
-// }
 
 fn print_node_vec(vec: Vec<Rc<Node>>) {
     for node in vec {
@@ -30,6 +25,7 @@ struct Cell {
     is_visited: bool,
     x: u32,
     y: u32,
+    vec_coord: usize,
 }
 
 impl Cell {
@@ -39,14 +35,16 @@ impl Cell {
             x: 0,
             y: 0,
             is_visited: false,
+            vec_coord: 0,
         }
     }
-    fn from(is_wall: bool, x: u32, y: u32) -> Cell {
+    fn from(is_wall: bool, x: u32, y: u32, vec_coord: usize) -> Cell {
         Cell {
             is_wall,
             x,
             y,
             is_visited: false,
+            vec_coord: vec_coord,
         }
     }
 }
@@ -73,7 +71,7 @@ impl Maze {
 
         // populate cells
         for i in 0..(width * height) {
-            let mut cell = Cell::from(true, i % width, i / width);
+            let mut cell = Cell::from(true, i % width, i / width, i as usize);
             if image_buff[(i * 3) as usize] == 255
                 && image_buff[(i * 3 + 1) as usize] == 255
                 && image_buff[(i * 3 + 2) as usize] == 255
@@ -125,8 +123,6 @@ impl Maze {
     // gets all unvisited neighbors
     fn get_neighbors(&self, cell: &CellRef) -> Vec<CellRef> {
         let mut neighbors: Vec<CellRef> = Vec::new();
-
-        // print!("Checking ({}_{})", cell.borrow().x, cell.borrow().y);
 
         let cell = cell.borrow();
 
@@ -180,8 +176,6 @@ impl Maze {
     fn bfs(&self) -> VecDeque<CellRef> {
         let mut path: VecDeque<CellRef> = VecDeque::new();
         let mut queue: VecDeque<CellRef> = VecDeque::new();
-        //let mut parent_map: HashMap<CellRef, CellRef> = HashMap::new();
-
         // it's ok to let 0 mean "cell has no parent" because a corner cell can't be the start of the maze
         // vector matches the "cells" vector, and each value in the vector contains the index of the cells parent
         // if value is 0, cell has no parent
@@ -194,72 +188,23 @@ impl Maze {
             let current_cell = queue.pop_front().unwrap();
             current_cell.borrow_mut().is_visited = true;
             for cell in self.get_neighbors(&current_cell) {
-                //parent_map.insert(Rc::clone(&cell), Rc::clone(&current_cell));
-                parent_vec[self.cell_location_in_vec(&cell)] =
-                    self.cell_location_in_vec(&current_cell);
-                //cell.borrow_mut().parent = Some(Rc::clone(&current_cell));
-                // print!("({}_{})", cell.borrow().x, cell.borrow().y);
+                parent_vec[cell.borrow().vec_coord] = current_cell.borrow().vec_coord;
                 if cell.borrow().x == self.end.borrow().x && cell.borrow().y == self.end.borrow().y
                 {
                     break;
                 }
                 queue.push_back(Rc::clone(&cell));
             }
-            println!();
         }
 
         path.push_front(Rc::clone(&self.end));
-        let mut cell_parent = parent_vec[self.cell_location_in_vec(&self.end)];
+        let mut cell_parent = parent_vec[self.end.borrow().vec_coord];
 
         while cell_parent != 0 {
             path.push_front(Rc::clone(&self.cells[cell_parent]));
-            cell_parent = parent_vec[self.cell_location_in_vec(&self.cells[cell_parent])];
+            cell_parent = parent_vec[self.cells[cell_parent].borrow().vec_coord];
         }
-
-        // if let Some(cell) = self.end.borrow().parent {
-        //     while
-        // }
-        // let path_cell = self.end.borrow().parent;
-
-        //path.push_front(Rc::clone(&self.end));
-
-        // let mut top = Rc::clone(&self.end);
-
-        // loop {
-        //     path.push_front(Rc::clone(&top));
-        //     let parent = &top.get().parent;
-        //     match parent {
-        //         Some(new_top) => {
-        //             top = Rc::clone(new_top);
-        //         }
-        //         None => {
-        //             break;
-        //         }
-        //     }
-        //     //if parent.
-        // }
-
-        // while path.get(0).unwrap().borrow().parent.is_some() {
-        //     path.push_front(Rc::clone(top));
-        // match cell.borrow().parent {
-        //     Some(cell_par) => {
-        //         cell = &cell_par;
-        //     }
-        //     None => {
-        //         break;
-        //     }
-        // }
-        // }
-
-        // match &self.end.borrow().parent {
-        //     Some(parent) => {
-        //         println!("We solved the maze!!");
-        //     }
-        //     None => {
-        //         println!("Failed to solve maze :(");
-        //     }
-        // }
-        self.print_solved(&path);
+        // self.print_solved(&path);
         path
     }
 
@@ -345,7 +290,7 @@ fn main() {
         }
     }
 
-    let decoder = png::Decoder::new(File::open("tiny.png").unwrap());
+    let decoder = png::Decoder::new(File::open("5k.png").unwrap());
 
     let (info, mut reader) = decoder.read_info().unwrap();
 
@@ -353,13 +298,16 @@ fn main() {
 
     let mut buf = vec![0; info.buffer_size()];
     reader.next_frame(&mut buf).unwrap();
-    println!("{:?}", buf);
+    // println!("{:?}", buf);
 
+    let load_time = Instant::now();
     let maze = Maze::from(buf, info.width, info.height);
-    maze.print();
-    // println!("{:?}", maze.bfs());
+    println!("{}", load_time.elapsed().as_millis());
+    // maze.print();
+    let solve_time = Instant::now();
     let solved = maze.bfs();
-    for cell in solved.iter() {
-        println!("{} {}", cell.borrow().x, cell.borrow().y);
-    }
+    println!("{}", solve_time.elapsed().as_millis());
+    // for cell in solved.iter() {
+    //     println!("{} {}", cell.borrow().x, cell.borrow().y);
+    // }
 }
