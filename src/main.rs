@@ -1,8 +1,10 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::hash::Hash;
+use std::io::BufWriter;
+use std::path::Path;
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use std::{fs::File, usize};
 
 mod graph;
@@ -44,7 +46,7 @@ impl Cell {
             x,
             y,
             is_visited: false,
-            vec_coord: vec_coord,
+            vec_coord,
         }
     }
 }
@@ -64,18 +66,26 @@ pub struct Maze {
 
 impl Maze {
     // create a maze from image buffer
-    fn from(image_buff: Vec<u8>, width: u32, height: u32) -> Maze {
-        let mut cells: Vec<CellRef> = Vec::new();
+    fn from(image_buff: &Vec<u8>, width: u32, height: u32, is_greyscale: bool) -> Maze {
+        let mut cells: Vec<CellRef> = Vec::new(); // try init with vec!
         let mut start: CellRef = Rc::new(RefCell::new(Cell::new()));
         let mut end: CellRef = Rc::new(RefCell::new(Cell::new()));
 
         // populate cells
         for i in 0..(width * height) {
+            //println!("{}", i);
             let mut cell = Cell::from(true, i % width, i / width, i as usize);
-            if image_buff[(i * 3) as usize] == 255
-                && image_buff[(i * 3 + 1) as usize] == 255
-                && image_buff[(i * 3 + 2) as usize] == 255
-            {
+            let mut is_open_path = false;
+
+            if is_greyscale {
+                is_open_path = image_buff[(i) as usize] == 255;
+            } else {
+                is_open_path = image_buff[(i * 3) as usize] == 255
+                    && image_buff[(i * 3 + 1) as usize] == 255
+                    && image_buff[(i * 3 + 2) as usize] == 255;
+            }
+
+            if is_open_path {
                 cell.is_wall = false;
                 if cell.y == 0 {
                     let ref_cell = Rc::new(RefCell::new(cell));
@@ -208,6 +218,15 @@ impl Maze {
         path
     }
 
+    fn apply_solved_maze_to_buf(&self, solved_path: &VecDeque<CellRef>, buf: &mut Vec<u8>) {
+        for solved_cell in solved_path.iter() {
+            let cell = solved_cell.borrow();
+            buf[(cell.vec_coord * 3) as usize] = 0;
+            buf[(cell.vec_coord * 3 + 1) as usize] = 255;
+            buf[(cell.vec_coord * 3 + 2) as usize] = 255;
+        }
+    }
+
     fn print(&self) {
         let start = self.start.borrow();
         let end = self.end.borrow();
@@ -290,23 +309,63 @@ fn main() {
         }
     }
 
-    let decoder = png::Decoder::new(File::open("5k.png").unwrap());
+    let img_file = "5k.png";
+    let solved_file = "5k_solved.png";
+
+    let decoder = png::Decoder::new(File::open(img_file).unwrap());
 
     let (info, mut reader) = decoder.read_info().unwrap();
 
     println!("{:?}", info);
 
+    let buff_time = Instant::now();
+    println!("Buffer size: {}", info.buffer_size());
     let mut buf = vec![0; info.buffer_size()];
     reader.next_frame(&mut buf).unwrap();
-    // println!("{:?}", buf);
+    println!(
+        "Time to fill buffer:      {}",
+        buff_time.elapsed().as_nanos()
+    );
 
     let load_time = Instant::now();
-    let maze = Maze::from(buf, info.width, info.height);
-    println!("{}", load_time.elapsed().as_millis());
+
+    let maze = Maze::from(
+        &buf,
+        info.width,
+        info.height,
+        info.color_type == png::ColorType::Grayscale,
+    );
+
+    println!(
+        "Time to fill maze cells:  {}",
+        load_time.elapsed().as_nanos()
+    );
     // maze.print();
     let solve_time = Instant::now();
     let solved = maze.bfs();
-    println!("{}", solve_time.elapsed().as_millis());
+    println!(
+        "Time to solve maze:       {}",
+        solve_time.elapsed().as_nanos()
+    );
+
+    let path = Path::new(solved_file);
+    let file = File::create(path).unwrap();
+    let ref mut w = BufWriter::new(file);
+
+    let mut encoder = png::Encoder::new(w, info.width, info.height);
+    encoder.set_color(png::ColorType::RGB);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder.write_header().unwrap();
+
+    let write_image_time = Instant::now();
+    maze.apply_solved_maze_to_buf(&solved, &mut buf);
+
+    writer.write_image_data(&buf).unwrap();
+    println!(
+        "Time to write image:      {}",
+        write_image_time.elapsed().as_nanos()
+    );
+
     // for cell in solved.iter() {
     //     println!("{} {}", cell.borrow().x, cell.borrow().y);
     // }
