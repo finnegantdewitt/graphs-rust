@@ -8,12 +8,13 @@
             "name": "(Windows) Launch",
             "type": "cppvsdbg",
             "request": "launch",
+            "preLaunchTask": "rust: cargo build",
             "program": "${workspaceRoot}/target/debug/graphs.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",
             "environment": [],
-            "externalConsole": true
+            "console": "integratedTerminal"
         }
     ]
 }

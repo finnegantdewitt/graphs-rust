@@ -24,7 +24,6 @@ fn print_node_vec(vec: Vec<Rc<Node>>) {
 #[derive(Eq, Hash, Debug)]
 struct Cell {
     is_wall: bool,
-    is_visited: bool,
     x: u32,
     y: u32,
     vec_coord: usize,
@@ -36,7 +35,6 @@ impl Cell {
             is_wall: true,
             x: 0,
             y: 0,
-            is_visited: false,
             vec_coord: 0,
         }
     }
@@ -45,7 +43,6 @@ impl Cell {
             is_wall,
             x,
             y,
-            is_visited: false,
             vec_coord,
         }
     }
@@ -131,7 +128,7 @@ impl Maze {
     }
 
     // gets all unvisited neighbors
-    fn get_neighbors(&self, cell: &CellRef) -> Vec<CellRef> {
+    fn get_neighbors(&self, cell: &CellRef, visited_vec: &Vec<bool>) -> Vec<CellRef> {
         let mut neighbors: Vec<CellRef> = Vec::new();
 
         let cell = cell.borrow();
@@ -142,7 +139,7 @@ impl Maze {
                 .cells
                 .get(self.coords_to_vec_location(cell.x, cell.y - 1))
                 .unwrap();
-            if !cell_above.borrow().is_wall && !cell_above.borrow().is_visited {
+            if !cell_above.borrow().is_wall && !visited_vec[cell_above.borrow().vec_coord] {
                 neighbors.push(Rc::clone(cell_above));
             }
         }
@@ -153,7 +150,7 @@ impl Maze {
                 .cells
                 .get(self.coords_to_vec_location(cell.x, cell.y + 1))
                 .unwrap();
-            if !cell_below.borrow().is_wall && !cell_below.borrow().is_visited {
+            if !cell_below.borrow().is_wall && !visited_vec[cell_below.borrow().vec_coord] {
                 neighbors.push(Rc::clone(cell_below));
             }
         }
@@ -164,7 +161,7 @@ impl Maze {
                 .cells
                 .get(self.coords_to_vec_location(cell.x - 1, cell.y))
                 .unwrap();
-            if !cell_left.borrow().is_wall && !cell_left.borrow().is_visited {
+            if !cell_left.borrow().is_wall && !visited_vec[cell_left.borrow().vec_coord] {
                 neighbors.push(Rc::clone(cell_left));
             }
         }
@@ -175,7 +172,7 @@ impl Maze {
                 .cells
                 .get(self.coords_to_vec_location(cell.x + 1, cell.y))
                 .unwrap();
-            if !cell_right.borrow().is_wall && !cell_right.borrow().is_visited {
+            if !cell_right.borrow().is_wall && !visited_vec[cell_right.borrow().vec_coord] {
                 neighbors.push(Rc::clone(cell_right));
             }
         }
@@ -190,14 +187,15 @@ impl Maze {
         // vector matches the "cells" vector, and each value in the vector contains the index of the cells parent
         // if value is 0, cell has no parent
         let mut parent_vec: Vec<usize> = vec![0; self.cells.len()];
+        let mut visited_vec: Vec<bool> = vec![false; self.cells.len()];
 
-        self.start.borrow_mut().is_visited = true;
+        visited_vec[self.start.borrow().vec_coord] = true;
         queue.push_back(Rc::clone(&self.start));
 
         while queue.len() > 0 {
             let current_cell = queue.pop_front().unwrap();
-            current_cell.borrow_mut().is_visited = true;
-            for cell in self.get_neighbors(&current_cell) {
+            for cell in self.get_neighbors(&current_cell, &visited_vec) {
+                visited_vec[cell.borrow().vec_coord] = true;
                 parent_vec[cell.borrow().vec_coord] = current_cell.borrow().vec_coord;
                 if cell.borrow().x == self.end.borrow().x && cell.borrow().y == self.end.borrow().y
                 {
@@ -271,6 +269,22 @@ impl Maze {
     }
 }
 
+fn convert_greyscale_buf_to_rgb(grey_buf: Vec<u8>) -> Vec<u8> {
+    let mut color_buf: Vec<u8> = Vec::new();
+    for cell in grey_buf {
+        if cell == 255 {
+            color_buf.push(255);
+            color_buf.push(255);
+            color_buf.push(255);
+        } else {
+            color_buf.push(0);
+            color_buf.push(0);
+            color_buf.push(0);
+        }
+    }
+    color_buf
+}
+
 fn main() {
     let mut graph: Graph = Graph::new();
     let a = graph.add_node(String::from("a"));
@@ -335,6 +349,7 @@ fn main() {
         info.height,
         info.color_type == png::ColorType::Grayscale,
     );
+    // maze.print();
 
     println!(
         "Time to fill maze cells:  {}",
@@ -358,6 +373,10 @@ fn main() {
     let mut writer = encoder.write_header().unwrap();
 
     let write_image_time = Instant::now();
+
+    if info.color_type == png::ColorType::Grayscale {
+        buf = convert_greyscale_buf_to_rgb(buf);
+    }
     maze.apply_solved_maze_to_buf(&solved, &mut buf);
 
     writer.write_image_data(&buf).unwrap();
@@ -365,8 +384,4 @@ fn main() {
         "Time to write image:      {}",
         write_image_time.elapsed().as_nanos()
     );
-
-    // for cell in solved.iter() {
-    //     println!("{} {}", cell.borrow().x, cell.borrow().y);
-    // }
 }
