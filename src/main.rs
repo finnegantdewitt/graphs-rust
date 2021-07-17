@@ -6,7 +6,6 @@ use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
 use std::{fs::File, usize};
-
 mod graph;
 use crate::graph::{Graph, Node};
 
@@ -72,15 +71,14 @@ impl Maze {
         for i in 0..(width * height) {
             //println!("{}", i);
             let mut cell = Cell::from(true, i % width, i / width, i as usize);
-            let mut is_open_path = false;
 
-            if is_greyscale {
-                is_open_path = image_buff[(i) as usize] == 255;
+            let is_open_path = if is_greyscale {
+                image_buff[(i) as usize] == 255
             } else {
-                is_open_path = image_buff[(i * 3) as usize] == 255
+                image_buff[(i * 3) as usize] == 255
                     && image_buff[(i * 3 + 1) as usize] == 255
-                    && image_buff[(i * 3 + 2) as usize] == 255;
-            }
+                    && image_buff[(i * 3 + 2) as usize] == 255
+            };
 
             if is_open_path {
                 cell.is_wall = false;
@@ -122,7 +120,7 @@ impl Maze {
     fn coords_to_vec_location(&self, x: u32, y: u32) -> usize {
         ((self.height * y) + x) as usize
     }
-
+    #[allow(dead_code)]
     fn cell_location_in_vec(&self, cell: &CellRef) -> usize {
         self.coords_to_vec_location(cell.borrow().x, cell.borrow().y)
     }
@@ -220,11 +218,11 @@ impl Maze {
         for solved_cell in solved_path.iter() {
             let cell = solved_cell.borrow();
             buf[(cell.vec_coord * 3) as usize] = 0;
-            buf[(cell.vec_coord * 3 + 1) as usize] = 255;
+            buf[(cell.vec_coord * 3 + 1) as usize] = 0;
             buf[(cell.vec_coord * 3 + 2) as usize] = 255;
         }
     }
-
+    #[allow(dead_code)]
     fn print(&self) {
         let start = self.start.borrow();
         let end = self.end.borrow();
@@ -244,7 +242,7 @@ impl Maze {
             }
         }
     }
-
+    #[allow(dead_code)]
     fn print_solved(&self, path: &VecDeque<CellRef>) {
         let start = self.start.borrow();
         let end = self.end.borrow();
@@ -323,8 +321,8 @@ fn main() {
         }
     }
 
-    let img_file = "5k.png";
-    let solved_file = "5k_solved.png";
+    let img_file = "tiny.png";
+    let solved_file = "tiny_solved.png";
 
     let decoder = png::Decoder::new(File::open(img_file).unwrap());
 
