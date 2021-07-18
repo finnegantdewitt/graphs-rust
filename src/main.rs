@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::hash::Hash;
 use std::io::BufWriter;
@@ -9,7 +8,7 @@ use std::{fs::File, usize};
 mod graph;
 use crate::graph::{Graph, Node};
 
-type CellRef = Rc<RefCell<Cell>>;
+type CellRef = Rc<Cell>;
 
 fn print_node_vec(vec: Vec<Rc<Node>>) {
     for node in vec {
@@ -64,8 +63,8 @@ impl Maze {
     // create a maze from image buffer
     fn from(image_buff: &Vec<u8>, width: u32, height: u32, is_greyscale: bool) -> Maze {
         let mut cells: Vec<CellRef> = Vec::new(); // try init with vec!
-        let mut start: CellRef = Rc::new(RefCell::new(Cell::new()));
-        let mut end: CellRef = Rc::new(RefCell::new(Cell::new()));
+        let mut start: CellRef = Rc::new(Cell::new());
+        let mut end: CellRef = Rc::new(Cell::new());
 
         // populate cells
         for i in 0..(width * height) {
@@ -83,28 +82,28 @@ impl Maze {
             if is_open_path {
                 cell.is_wall = false;
                 if cell.y == 0 {
-                    let ref_cell = Rc::new(RefCell::new(cell));
+                    let ref_cell = Rc::new(cell);
                     let clone_cell = Rc::clone(&ref_cell);
                     cells.push(ref_cell);
                     start = Rc::clone(&clone_cell);
                 } else if cell.y == width - 1 {
-                    let ref_cell = Rc::new(RefCell::new(cell));
+                    let ref_cell = Rc::new(cell);
                     let clone_cell = Rc::clone(&ref_cell);
                     cells.push(ref_cell);
                     end = Rc::clone(&clone_cell);
                 } else {
-                    let ref_cell = Rc::new(RefCell::new(cell));
+                    let ref_cell = Rc::new(cell);
                     cells.push(ref_cell);
                 }
             } else {
-                cells.push(Rc::new(RefCell::new(cell)));
+                cells.push(Rc::new(cell));
             }
         }
 
-        if start.borrow().is_wall {
+        if start.is_wall {
             panic!("Failed to find maze start");
         }
-        if end.borrow().is_wall {
+        if end.is_wall {
             panic!("Failed to find the exit of the maze");
         }
 
@@ -122,14 +121,12 @@ impl Maze {
     }
     #[allow(dead_code)]
     fn cell_location_in_vec(&self, cell: &CellRef) -> usize {
-        self.coords_to_vec_location(cell.borrow().x, cell.borrow().y)
+        self.coords_to_vec_location(cell.x, cell.y)
     }
 
     // gets all unvisited neighbors
     fn get_neighbors(&self, cell: &CellRef, visited_vec: &Vec<bool>) -> Vec<CellRef> {
         let mut neighbors: Vec<CellRef> = Vec::new();
-
-        let cell = cell.borrow();
 
         // check cell above
         if cell.y > 0 {
@@ -137,7 +134,7 @@ impl Maze {
                 .cells
                 .get(self.coords_to_vec_location(cell.x, cell.y - 1))
                 .unwrap();
-            if !cell_above.borrow().is_wall && !visited_vec[cell_above.borrow().vec_coord] {
+            if !cell_above.is_wall && !visited_vec[cell_above.vec_coord] {
                 neighbors.push(Rc::clone(cell_above));
             }
         }
@@ -148,7 +145,7 @@ impl Maze {
                 .cells
                 .get(self.coords_to_vec_location(cell.x, cell.y + 1))
                 .unwrap();
-            if !cell_below.borrow().is_wall && !visited_vec[cell_below.borrow().vec_coord] {
+            if !cell_below.is_wall && !visited_vec[cell_below.vec_coord] {
                 neighbors.push(Rc::clone(cell_below));
             }
         }
@@ -159,7 +156,7 @@ impl Maze {
                 .cells
                 .get(self.coords_to_vec_location(cell.x - 1, cell.y))
                 .unwrap();
-            if !cell_left.borrow().is_wall && !visited_vec[cell_left.borrow().vec_coord] {
+            if !cell_left.is_wall && !visited_vec[cell_left.vec_coord] {
                 neighbors.push(Rc::clone(cell_left));
             }
         }
@@ -170,7 +167,7 @@ impl Maze {
                 .cells
                 .get(self.coords_to_vec_location(cell.x + 1, cell.y))
                 .unwrap();
-            if !cell_right.borrow().is_wall && !visited_vec[cell_right.borrow().vec_coord] {
+            if !cell_right.is_wall && !visited_vec[cell_right.vec_coord] {
                 neighbors.push(Rc::clone(cell_right));
             }
         }
@@ -187,16 +184,15 @@ impl Maze {
         let mut parent_vec: Vec<usize> = vec![0; self.cells.len()];
         let mut visited_vec: Vec<bool> = vec![false; self.cells.len()];
 
-        visited_vec[self.start.borrow().vec_coord] = true;
+        visited_vec[self.start.vec_coord] = true;
         queue.push_back(Rc::clone(&self.start));
 
         while queue.len() > 0 {
             let current_cell = queue.pop_front().unwrap();
             for cell in self.get_neighbors(&current_cell, &visited_vec) {
-                visited_vec[cell.borrow().vec_coord] = true;
-                parent_vec[cell.borrow().vec_coord] = current_cell.borrow().vec_coord;
-                if cell.borrow().x == self.end.borrow().x && cell.borrow().y == self.end.borrow().y
-                {
+                visited_vec[cell.vec_coord] = true;
+                parent_vec[cell.vec_coord] = current_cell.vec_coord;
+                if cell.x == self.end.x && cell.y == self.end.y {
                     break;
                 }
                 queue.push_back(Rc::clone(&cell));
@@ -204,19 +200,18 @@ impl Maze {
         }
 
         path.push_front(Rc::clone(&self.end));
-        let mut cell_parent = parent_vec[self.end.borrow().vec_coord];
+        let mut cell_parent = parent_vec[self.end.vec_coord];
 
         while cell_parent != 0 {
             path.push_front(Rc::clone(&self.cells[cell_parent]));
-            cell_parent = parent_vec[self.cells[cell_parent].borrow().vec_coord];
+            cell_parent = parent_vec[self.cells[cell_parent].vec_coord];
         }
         // self.print_solved(&path);
         path
     }
 
     fn apply_solved_maze_to_buf(&self, solved_path: &VecDeque<CellRef>, buf: &mut Vec<u8>) {
-        for solved_cell in solved_path.iter() {
-            let cell = solved_cell.borrow();
+        for cell in solved_path.iter() {
             buf[(cell.vec_coord * 3) as usize] = 0;
             buf[(cell.vec_coord * 3 + 1) as usize] = 0;
             buf[(cell.vec_coord * 3 + 2) as usize] = 255;
@@ -224,18 +219,18 @@ impl Maze {
     }
     #[allow(dead_code)]
     fn print(&self) {
-        let start = self.start.borrow();
-        let end = self.end.borrow();
+        let start = &self.start;
+        let end = &self.end;
 
         println!("width: {} height: {}", self.width, self.height);
         println!("Start {} {} end: {} {}", start.x, start.y, end.x, end.y);
         for (i, cell) in self.cells.iter().enumerate() {
-            if cell.borrow().is_wall {
+            if cell.is_wall {
                 //print!("0")
-                print!("({}.{})", cell.borrow().x, cell.borrow().y);
+                print!("({}.{})", cell.x, cell.y);
             } else {
                 //print!("1");
-                print!("({}_{})", cell.borrow().x, cell.borrow().y);
+                print!("({}_{})", cell.x, cell.y);
             }
             if (i + 1) as u32 % self.width == 0 {
                 println!();
@@ -244,20 +239,20 @@ impl Maze {
     }
     #[allow(dead_code)]
     fn print_solved(&self, path: &VecDeque<CellRef>) {
-        let start = self.start.borrow();
-        let end = self.end.borrow();
+        let start = &self.start;
+        let end = &self.end;
 
         println!("width: {} height: {}", self.width, self.height);
         println!("Start {} {} end: {} {}", start.x, start.y, end.x, end.y);
 
         for (i, cell) in self.cells.iter().enumerate() {
-            if cell.borrow().is_wall {
-                print!("({}.{})", cell.borrow().x, cell.borrow().y);
+            if cell.is_wall {
+                print!("({}.{})", cell.x, cell.y);
             } else {
                 if path.contains(cell) {
-                    print!("({} {})", cell.borrow().x, cell.borrow().y);
+                    print!("({} {})", cell.x, cell.y);
                 } else {
-                    print!("({}_{})", cell.borrow().x, cell.borrow().y);
+                    print!("({}_{})", cell.x, cell.y);
                 }
             }
             if (i + 1) as u32 % self.width == 0 {
