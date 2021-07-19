@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 use std::usize;
 
-type CellRef = Rc<Cell>;
+pub type CellRef = Rc<Cell>;
 
 // cell is a location in maze, has x, y coordinate
 // 0, 0 at top left
@@ -11,7 +11,7 @@ pub struct Cell {
     is_wall: bool,
     x: u32,
     y: u32,
-    vec_coord: usize,
+    pub vec_coord: usize,
 }
 
 impl Cell {
@@ -39,8 +39,8 @@ impl PartialEq for Cell {
 }
 
 pub struct Maze {
-    width: u32,
-    height: u32,
+    pub width: u32,
+    pub height: u32,
     cells: Vec<CellRef>,
     start: CellRef,
     end: CellRef,
@@ -190,14 +190,6 @@ impl Maze {
         }
 
         path
-    }
-
-    pub fn apply_solved_maze_to_buf(&self, solved_path: &VecDeque<CellRef>, buf: &mut Vec<u8>) {
-        for cell in solved_path.iter() {
-            buf[(cell.vec_coord * 3) as usize] = 0;
-            buf[(cell.vec_coord * 3 + 1) as usize] = 0;
-            buf[(cell.vec_coord * 3 + 2) as usize] = 255;
-        }
     }
 
     pub fn print(&self) {
