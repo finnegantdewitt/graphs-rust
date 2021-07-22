@@ -49,7 +49,7 @@ pub struct Maze {
 impl Maze {
     // create a maze from image buffer
     pub fn from(image_buff: &Vec<u8>, width: u32, height: u32, is_greyscale: bool) -> Maze {
-        let mut cells: Vec<CellRef> = Vec::new(); // try init with vec!
+        let mut cells: Vec<CellRef> = Vec::new();
         let mut start: CellRef = Rc::new(Cell::new());
         let mut end: CellRef = Rc::new(Cell::new());
 

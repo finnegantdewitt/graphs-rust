@@ -3,37 +3,48 @@ use std::{
     rc::Rc,
 };
 
+type RefNode = Rc<Node>;
+
 pub struct Edge {
     weight: u32,
-    from: Rc<Node>,
-    to: Rc<Node>,
+    from: RefNode,
+    to: RefNode,
 }
 
 impl Edge {
-    pub fn from(from: Rc<Node>, to: Rc<Node>, weight: u32) -> Edge {
+    pub fn from(from: RefNode, to: RefNode, weight: u32) -> Edge {
         Edge { from, to, weight }
     }
 }
 
 #[derive(Eq, Hash)]
 pub struct Node {
-    pub name: String,
+    pub x: u32,
+    pub y: u32,
+    pub vec_coord: usize,
 }
 impl Node {
-    pub fn from(name: String) -> Node {
-        Node { name }
+    pub fn new() -> Node {
+        Node {
+            x: 0,
+            y: 0,
+            vec_coord: 0,
+        }
+    }
+    pub fn from(x: u32, y: u32, vec_coord: usize) -> Node {
+        Node { x, y, vec_coord }
     }
 }
 
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
+        self.vec_coord == other.vec_coord
     }
 }
 
 pub struct Graph {
-    nodes: Vec<Rc<Node>>,
-    edges: HashMap<Rc<Node>, Vec<Edge>>,
+    nodes: Vec<RefNode>,
+    edges: HashMap<RefNode, Vec<Edge>>,
 }
 
 impl Graph {
@@ -44,19 +55,19 @@ impl Graph {
         }
     }
 
-    pub fn add_node(&mut self, s: String) -> Rc<Node> {
-        let new_node = Rc::new(Node::from(s));
+    pub fn add_node(&mut self, x: u32, y: u32, vec_coord: usize) -> RefNode {
+        let new_node = Rc::new(Node::from(x, y, vec_coord));
         let return_node = Rc::clone(&new_node);
         self.nodes.push(new_node);
         return_node
     }
 
-    pub fn check_if_node_exist(&self, node: &Rc<Node>) -> bool {
+    pub fn check_if_node_exist(&self, node: &RefNode) -> bool {
         self.nodes.contains(node)
     }
 
     // if you add an edge with the same from and to node, it overwrites the weight
-    pub fn add_edge(&mut self, from: &Rc<Node>, to: &Rc<Node>, weight: u32) {
+    pub fn add_edge(&mut self, from: &RefNode, to: &RefNode, weight: u32) {
         if self.check_if_node_exist(from) && self.check_if_node_exist(to) {
             if !self.edges.contains_key(from) {
                 self.edges.insert(
@@ -106,17 +117,17 @@ impl Graph {
     }
 
     // Breath first tree traversal
-    pub fn bft(&self, start: &Rc<Node>) -> Option<Vec<Rc<Node>>> {
+    pub fn bft(&self, start: &RefNode) -> Option<Vec<RefNode>> {
         if self.check_if_node_exist(start) {
-            let mut vec_to_return: Vec<Rc<Node>> = Vec::new();
+            let mut vec_to_return: Vec<RefNode> = Vec::new();
 
             // hashmap of what nots have been visited
-            let mut visited: HashMap<&Rc<Node>, bool> = HashMap::new();
+            let mut visited: HashMap<&RefNode, bool> = HashMap::new();
             for node in self.nodes.iter() {
                 visited.insert(node, false);
             }
 
-            let mut queue: VecDeque<&Rc<Node>> = VecDeque::new();
+            let mut queue: VecDeque<&RefNode> = VecDeque::new();
 
             *visited.get_mut(start).unwrap() = true;
             queue.push_back(start);
@@ -146,11 +157,11 @@ impl Graph {
         }
     }
 
-    pub fn dft(&self, start: &Rc<Node>) -> Option<Vec<Rc<Node>>> {
+    pub fn dft(&self, start: &RefNode) -> Option<Vec<RefNode>> {
         if self.check_if_node_exist(start) {
-            let mut vec_to_return: Vec<Rc<Node>> = Vec::new();
+            let mut vec_to_return: Vec<RefNode> = Vec::new();
 
-            let mut visited: HashMap<&Rc<Node>, bool> = HashMap::new();
+            let mut visited: HashMap<&RefNode, bool> = HashMap::new();
             for node in self.nodes.iter() {
                 visited.insert(node, false);
             }
@@ -182,10 +193,13 @@ impl Graph {
 
     pub fn print(&self) {
         for (index, node) in self.nodes.iter().enumerate() {
-            print!("{}: {}: ", index, node.name);
+            print!("{}: {},{}: ", index, node.x, node.y);
             if self.edges.contains_key(node) {
                 for edge in self.edges.get(node).expect("Failed to unwrap edges") {
-                    print!("{}->({}){} ", edge.from.name, edge.weight, edge.to.name);
+                    print!(
+                        "{},{}->({}){},{} ",
+                        edge.from.x, edge.from.y, edge.weight, edge.to.x, edge.to.y
+                    );
                 }
             }
             println!();
