@@ -110,6 +110,8 @@ fn convert_greyscale_buf_to_rgb(image_buffer: &mut Vec<u8>) -> Vec<u8> {
 }
 
 impl OptMaze {
+    // TODO: Need to add edges, and needs to be refactored
+    // seems to be about 25%-35% slower than filling in all the squares, without edge adding
     pub fn from(image_buff: &Vec<u8>, width: u32, height: u32, is_greyscale: bool) -> OptMaze {
         let mut graph = Graph::new();
         let mut start = Rc::new(Node::new());
@@ -143,9 +145,6 @@ impl OptMaze {
 
         while !node_queue.is_empty() {
             let current_node = node_queue.pop().unwrap();
-            if current_node.x == 1 && current_node.y == 3 {
-                println!("hi");
-            }
             let neighbors = get_neighbors(
                 current_node.x,
                 current_node.y,
@@ -155,14 +154,11 @@ impl OptMaze {
                 height,
                 is_greyscale,
             );
-            println!("({} {})", current_node.x, current_node.y);
+            // println!("({} {})", current_node.x, current_node.y);
 
             if neighbors.left {
                 let mut left_idx = 1;
-                visited[xy_to_image_buff_location(current_node.x - 1, current_node.y, height)] =
-                    true;
                 loop {
-                    println!("1");
                     let x = current_node.x - left_idx;
                     let y = current_node.y;
                     visited[xy_to_image_buff_location(x, y, height)] = true;
@@ -182,10 +178,7 @@ impl OptMaze {
             }
             if neighbors.right {
                 let mut right_idx = 1;
-                visited[xy_to_image_buff_location(current_node.x + 1, current_node.y, height)] =
-                    true;
                 loop {
-                    println!("2");
                     let x = current_node.x + right_idx;
                     let y = current_node.y;
                     visited[xy_to_image_buff_location(x, y, height)] = true;
@@ -205,15 +198,9 @@ impl OptMaze {
             }
             if neighbors.above {
                 let mut above_idx = 1;
-                visited[xy_to_image_buff_location(current_node.x, current_node.y - 1, height)] =
-                    true;
                 loop {
-                    println!("3");
                     let x = current_node.x;
                     let y = current_node.y - above_idx;
-                    if current_node.x == 8 && current_node.y == 5 {
-                        println!("hi");
-                    }
                     visited[xy_to_image_buff_location(x, y, height)] = true;
                     let above_neighbors =
                         get_neighbors(x, y, image_buff, &visited, width, height, is_greyscale);
@@ -236,10 +223,7 @@ impl OptMaze {
                 }
             }
             if neighbors.below {
-                println!("4");
                 let mut below_idx = 1;
-                visited[xy_to_image_buff_location(current_node.x, current_node.y + 1, height)] =
-                    true;
                 loop {
                     let x = current_node.x;
                     let y = current_node.y + below_idx;
@@ -265,6 +249,14 @@ impl OptMaze {
                         below_idx += 1;
                     }
                 }
+            }
+        }
+
+        // finds the end node
+        for node in &graph.nodes {
+            if node.y == height - 1 {
+                end = Rc::clone(&node);
+                break;
             }
         }
 

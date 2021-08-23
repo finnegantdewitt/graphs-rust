@@ -1,4 +1,5 @@
 // use lib::maze_solver::MazeSolver;
+use lib::maze::Maze;
 use lib::opt_maze::OptMaze;
 use std::{env, process::exit};
 
@@ -7,6 +8,39 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
 use std::time::Instant;
+
+//
+fn test_maze_generation_speed(buf: &Vec<u8>, width: u32, height: u32, is_greyscale: bool) {
+    let mut time_naive: u128 = 0;
+    let runs: u128 = 1000;
+    for i in 0..runs {
+        let time = Instant::now();
+        let mut naive_maze = Maze::from(&buf, width, height, is_greyscale);
+        time_naive += time.elapsed().as_nanos();
+    }
+    println!(
+        "average run time for naive maze for {} runs is {} nanosecs",
+        runs,
+        time_naive / runs
+    );
+
+    let mut time_opt: u128 = 0;
+    for i in 0..runs {
+        let time = Instant::now();
+        let mut opt_maze = OptMaze::from(&buf, width, height, is_greyscale);
+        time_opt += time.elapsed().as_nanos();
+    }
+    println!(
+        "average run time for optim maze for {} runs is {} nanosecs",
+        runs,
+        time_opt / runs
+    );
+    println!(
+        "average time difference of {}%",
+        ((time_opt - time_naive) * 100) / (time_naive)
+    );
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     println!("{:?}", args);
@@ -51,18 +85,21 @@ fn main() {
         buff_time.elapsed().as_nanos()
     );
 
-    // load the maze
-    let load_time = Instant::now();
-    let mut maze = OptMaze::from(
+    // test maze load speed
+    test_maze_generation_speed(
         &buf,
         info.width,
         info.height,
         info.color_type == png::ColorType::Grayscale,
     );
-    println!(
-        "Time to fill maze cells:  {}",
-        load_time.elapsed().as_nanos()
-    );
-    maze.print();
-    maze.write_image(output_file, &mut buf, false);
+
+    // load the maze
+    // let mut maze = OptMaze::from(
+    //     &buf,
+    //     info.width,
+    //     info.height,
+    //     info.color_type == png::ColorType::Grayscale,
+    // );
+    // maze.print();
+    // maze.write_image(output_file, &mut buf, false);
 }
