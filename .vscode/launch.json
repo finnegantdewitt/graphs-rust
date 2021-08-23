@@ -10,7 +10,7 @@
             "request": "launch",
             "preLaunchTask": "rust: cargo build",
             "program": "${workspaceRoot}/target/debug/graphs.exe",
-            "args": [],
+            "args": ["tiny.png"],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",
             "environment": [],

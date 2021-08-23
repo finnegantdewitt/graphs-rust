@@ -43,7 +43,7 @@ impl PartialEq for Node {
 }
 
 pub struct Graph {
-    nodes: Vec<RefNode>,
+    pub nodes: Vec<RefNode>,
     edges: HashMap<RefNode, Vec<Edge>>,
 }
 
