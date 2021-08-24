@@ -208,6 +208,12 @@ impl OptMaze {
                         // in which case we should just break and not do anything
                         // this seems to only matter on the y axis, breath first would require on x axis
                         if visited[xy_to_image_buff_location(x, y - 1, height)] {
+                            match graph.find_node_xy(x, y - 1) {
+                                None => break,
+                                Some(to) => {
+                                    graph.add_edge(&current_node, &to, above_idx);
+                                }
+                            }
                             break;
                         }
                         let new_node =
@@ -235,6 +241,12 @@ impl OptMaze {
                         if xy_to_image_buff_location(x, y + 1, height) < (width * height) as usize
                             && visited[xy_to_image_buff_location(x, y + 1, height)]
                         {
+                            match graph.find_node_xy(x, y + 1) {
+                                None => break,
+                                Some(to) => {
+                                    graph.add_edge(&current_node, &to, below_idx);
+                                }
+                            }
                             break;
                         }
                         let new_node =
@@ -302,51 +314,92 @@ impl OptMaze {
                     (edge.to.x as i32 - edge.from.x as i32),
                     (edge.to.y as i32 - edge.from.y as i32),
                 );
+                // println!("{} {}", path_to_create.0, path_to_create.1);
                 if path_to_create.0 == 0 {
                     if path_to_create.1 < 0 {
-                        // if path goes up
-                        for i in 1..(-1 * path_to_create.1) as u32 {
-                            println!("{} {}", edge.from.y, self.width * i);
-                            let vec_coord = edge.from.vec_coord - (self.width * i) as usize;
-                            image_buffer[(vec_coord * 3) as usize] = 0;
-                            image_buffer[(vec_coord * 3 + 2) as usize] = 255;
+                        // if path goes up DARK RED
+                        println!("Up");
+                        println!("Weight: {}", edge.weight);
+                        println!("From  : {} {}", edge.from.x, edge.from.y);
+                        println!("To    : {} {}", edge.to.x, edge.to.y);
+                        print!("Path: ");
+                        for i in 1..(-path_to_create.1) as u32 {
+                            print!("({} {})", edge.from.x, edge.from.y - i);
+                            let vec_coord = xy_to_image_buff_location(
+                                edge.from.x,
+                                edge.from.y - i,
+                                self.height,
+                            );
+                            image_buffer[(vec_coord * 3) as usize] = 128;
                             image_buffer[(vec_coord * 3 + 1) as usize] = 0;
-                        }
-                    } else {
-                        // if path goes down
-                        for i in 1..path_to_create.1 as u32 {
-                            let vec_coord = edge.from.vec_coord + (self.width * i) as usize;
-                            image_buffer[(vec_coord * 3) as usize] = 255;
                             image_buffer[(vec_coord * 3 + 2) as usize] = 0;
-                            image_buffer[(vec_coord * 3 + 1) as usize] = 0;
                         }
+                        println!();
+                        println!();
+                    } else {
+                        // if path goes down RED
+                        println!("Down");
+                        println!("Weight: {}", edge.weight);
+                        println!("From  : {} {}", edge.from.x, edge.from.y);
+                        println!("To    : {} {}", edge.to.x, edge.to.y);
+                        print!("Path: ");
+                        for i in 1..(path_to_create.1) as u32 {
+                            print!("({} {})", edge.from.x, edge.from.y + i);
+                            let vec_coord = xy_to_image_buff_location(
+                                edge.from.x,
+                                edge.from.y + i,
+                                self.height,
+                            );
+                            image_buffer[(vec_coord * 3) as usize] = 255;
+                            image_buffer[(vec_coord * 3 + 1) as usize] = 0;
+                            image_buffer[(vec_coord * 3 + 2) as usize] = 0;
+                        }
+                        println!();
+                        println!();
                     }
                 } else {
                     if path_to_create.0 < 0 {
-                        // if path goes left
-                        for i in 1..(-1 * path_to_create.1) as u32 {
-                            let vec_coord = edge.from.vec_coord - i as usize;
+                        // if path goes left MAGENTA
+                        println!("Left");
+                        println!("Weight: {}", edge.weight);
+                        println!("From  : {} {}", edge.from.x, edge.from.y);
+                        println!("To    : {} {}", edge.to.x, edge.to.y);
+                        print!("Path: ");
+                        for i in 1..(-path_to_create.0) as u32 {
+                            print!("({} {})", edge.from.x - i, edge.from.y);
+                            let vec_coord = xy_to_image_buff_location(
+                                edge.from.x - i,
+                                edge.from.y,
+                                self.height,
+                            );
                             image_buffer[(vec_coord * 3) as usize] = 255;
-                            image_buffer[(vec_coord * 3 + 2) as usize] = 0;
                             image_buffer[(vec_coord * 3 + 1) as usize] = 0;
+                            image_buffer[(vec_coord * 3 + 2) as usize] = 255;
                         }
+                        println!();
+                        println!();
                     } else {
-                        // if path goes right
-                        for i in 1..path_to_create.1 as u32 {
-                            let vec_coord = edge.from.vec_coord + i as usize;
+                        // if path goes right YELLOW
+                        println!("Right");
+                        println!("Weight: {}", edge.weight);
+                        println!("From  : {} {}", edge.from.x, edge.from.y);
+                        println!("To    : {} {}", edge.to.x, edge.to.y);
+                        print!("Path: ");
+                        for i in 1..(path_to_create.0) as u32 {
+                            print!("({} {})", edge.from.x + i, edge.from.y);
+                            let vec_coord = xy_to_image_buff_location(
+                                edge.from.x + i,
+                                edge.from.y,
+                                self.height,
+                            );
                             image_buffer[(vec_coord * 3) as usize] = 255;
+                            image_buffer[(vec_coord * 3 + 1) as usize] = 255;
                             image_buffer[(vec_coord * 3 + 2) as usize] = 0;
-                            image_buffer[(vec_coord * 3 + 1) as usize] = 0;
                         }
+                        println!();
+                        println!();
                     }
                 }
-                image_buffer[(edge.from.vec_coord * 3) as usize] = 255;
-                image_buffer[(edge.from.vec_coord * 3 + 2) as usize] = 0;
-                image_buffer[(edge.from.vec_coord * 3 + 1) as usize] = 0;
-
-                image_buffer[(edge.to.vec_coord * 3) as usize] = 255;
-                image_buffer[(edge.to.vec_coord * 3 + 1) as usize] = 0;
-                image_buffer[(edge.to.vec_coord * 3 + 2) as usize] = 0;
             }
         }
 

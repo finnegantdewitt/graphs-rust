@@ -100,6 +100,6 @@ fn main() {
         info.height,
         info.color_type == png::ColorType::Grayscale,
     );
-    maze.print();
+    // maze.print();
     maze.write_image(output_file, &mut buf, false);
 }

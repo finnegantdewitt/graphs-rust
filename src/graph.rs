@@ -62,6 +62,15 @@ impl Graph {
         return_node
     }
 
+    pub fn find_node_xy(&self, x: u32, y: u32) -> Option<RefNode> {
+        for node in &self.nodes {
+            if node.x == x && node.y == y {
+                return Some(Rc::clone(node));
+            }
+        }
+        return None;
+    }
+
     pub fn check_if_node_exist(&self, node: &RefNode) -> bool {
         self.nodes.contains(node)
     }
