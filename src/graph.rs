@@ -6,9 +6,9 @@ use std::{
 type RefNode = Rc<Node>;
 
 pub struct Edge {
-    weight: u32,
-    from: RefNode,
-    to: RefNode,
+    pub weight: u32,
+    pub from: RefNode,
+    pub to: RefNode,
 }
 
 impl Edge {
@@ -44,7 +44,7 @@ impl PartialEq for Node {
 
 pub struct Graph {
     pub nodes: Vec<RefNode>,
-    edges: HashMap<RefNode, Vec<Edge>>,
+    pub edges: HashMap<RefNode, Vec<Edge>>,
 }
 
 impl Graph {
@@ -68,26 +68,24 @@ impl Graph {
 
     // if you add an edge with the same from and to node, it overwrites the weight
     pub fn add_edge(&mut self, from: &RefNode, to: &RefNode, weight: u32) {
-        if self.check_if_node_exist(from) && self.check_if_node_exist(to) {
-            if !self.edges.contains_key(from) {
-                self.edges.insert(
-                    Rc::clone(from),
-                    vec![Edge::from(Rc::clone(from), Rc::clone(to), weight)],
-                );
-            } else {
-                let edge_vec = self
-                    .edges
-                    .get_mut(from)
-                    .expect("failed to unwrap vec in add_edge");
-                // if it finds this edge already exist, it overwrites it's weight and returns
-                for edge in edge_vec.iter_mut() {
-                    if &edge.to == to {
-                        edge.weight = weight;
-                        return;
-                    }
+        if !self.edges.contains_key(from) {
+            self.edges.insert(
+                Rc::clone(from),
+                vec![Edge::from(Rc::clone(from), Rc::clone(to), weight)],
+            );
+        } else {
+            let edge_vec = self
+                .edges
+                .get_mut(from)
+                .expect("failed to unwrap vec in add_edge");
+            // if it finds this edge already exist, it overwrites it's weight and returns
+            for edge in edge_vec.iter_mut() {
+                if &edge.to == to {
+                    edge.weight = weight;
+                    return;
                 }
-                edge_vec.push(Edge::from(Rc::clone(from), Rc::clone(to), weight))
             }
+            edge_vec.push(Edge::from(Rc::clone(from), Rc::clone(to), weight))
         }
     }
 

@@ -1,5 +1,6 @@
 use crate::graph::*;
 use std::collections::VecDeque;
+use std::fmt::Pointer;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
@@ -165,11 +166,10 @@ impl OptMaze {
                     let left_neighbors =
                         get_neighbors(x, y, image_buff, &visited, width, height, is_greyscale);
                     if left_neighbors.above || left_neighbors.below || !left_neighbors.left {
-                        node_queue.push(Rc::clone(&graph.add_node(
-                            x,
-                            y,
-                            xy_to_image_buff_location(x, y, height),
-                        )));
+                        let new_node =
+                            &graph.add_node(x, y, xy_to_image_buff_location(x, y, height));
+                        graph.add_edge(&current_node, new_node, left_idx);
+                        node_queue.push(Rc::clone(new_node));
                         break;
                     } else {
                         left_idx += 1;
@@ -185,11 +185,10 @@ impl OptMaze {
                     let right_neighbors =
                         get_neighbors(x, y, image_buff, &visited, width, height, is_greyscale);
                     if right_neighbors.above || right_neighbors.below || !right_neighbors.right {
-                        node_queue.push(Rc::clone(&graph.add_node(
-                            x,
-                            y,
-                            xy_to_image_buff_location(x, y, height),
-                        )));
+                        let new_node =
+                            &graph.add_node(x, y, xy_to_image_buff_location(x, y, height));
+                        graph.add_edge(&current_node, new_node, right_idx);
+                        node_queue.push(Rc::clone(new_node));
                         break;
                     } else {
                         right_idx += 1;
@@ -211,11 +210,10 @@ impl OptMaze {
                         if visited[xy_to_image_buff_location(x, y - 1, height)] {
                             break;
                         }
-                        node_queue.push(Rc::clone(&graph.add_node(
-                            x,
-                            y,
-                            xy_to_image_buff_location(x, y, height),
-                        )));
+                        let new_node =
+                            &graph.add_node(x, y, xy_to_image_buff_location(x, y, height));
+                        graph.add_edge(&current_node, new_node, above_idx);
+                        node_queue.push(Rc::clone(new_node));
                         break;
                     } else {
                         above_idx += 1;
@@ -239,11 +237,10 @@ impl OptMaze {
                         {
                             break;
                         }
-                        node_queue.push(Rc::clone(&graph.add_node(
-                            x,
-                            y,
-                            xy_to_image_buff_location(x, y, height),
-                        )));
+                        let new_node =
+                            &graph.add_node(x, y, xy_to_image_buff_location(x, y, height));
+                        graph.add_edge(&current_node, new_node, below_idx);
+                        node_queue.push(Rc::clone(new_node));
                         break;
                     } else {
                         below_idx += 1;
@@ -297,6 +294,60 @@ impl OptMaze {
             image_buffer[(node.vec_coord * 3) as usize] = 0;
             image_buffer[(node.vec_coord * 3 + 1) as usize] = 0;
             image_buffer[(node.vec_coord * 3 + 2) as usize] = 255;
+        }
+
+        for (from, edge_vec) in self.graph.edges.iter() {
+            for edge in edge_vec {
+                let path_to_create = (
+                    (edge.to.x as i32 - edge.from.x as i32),
+                    (edge.to.y as i32 - edge.from.y as i32),
+                );
+                if path_to_create.0 == 0 {
+                    if path_to_create.1 < 0 {
+                        // if path goes up
+                        for i in 1..(-1 * path_to_create.1) as u32 {
+                            println!("{} {}", edge.from.y, self.width * i);
+                            let vec_coord = edge.from.vec_coord - (self.width * i) as usize;
+                            image_buffer[(vec_coord * 3) as usize] = 0;
+                            image_buffer[(vec_coord * 3 + 2) as usize] = 255;
+                            image_buffer[(vec_coord * 3 + 1) as usize] = 0;
+                        }
+                    } else {
+                        // if path goes down
+                        for i in 1..path_to_create.1 as u32 {
+                            let vec_coord = edge.from.vec_coord + (self.width * i) as usize;
+                            image_buffer[(vec_coord * 3) as usize] = 255;
+                            image_buffer[(vec_coord * 3 + 2) as usize] = 0;
+                            image_buffer[(vec_coord * 3 + 1) as usize] = 0;
+                        }
+                    }
+                } else {
+                    if path_to_create.0 < 0 {
+                        // if path goes left
+                        for i in 1..(-1 * path_to_create.1) as u32 {
+                            let vec_coord = edge.from.vec_coord - i as usize;
+                            image_buffer[(vec_coord * 3) as usize] = 255;
+                            image_buffer[(vec_coord * 3 + 2) as usize] = 0;
+                            image_buffer[(vec_coord * 3 + 1) as usize] = 0;
+                        }
+                    } else {
+                        // if path goes right
+                        for i in 1..path_to_create.1 as u32 {
+                            let vec_coord = edge.from.vec_coord + i as usize;
+                            image_buffer[(vec_coord * 3) as usize] = 255;
+                            image_buffer[(vec_coord * 3 + 2) as usize] = 0;
+                            image_buffer[(vec_coord * 3 + 1) as usize] = 0;
+                        }
+                    }
+                }
+                image_buffer[(edge.from.vec_coord * 3) as usize] = 255;
+                image_buffer[(edge.from.vec_coord * 3 + 2) as usize] = 0;
+                image_buffer[(edge.from.vec_coord * 3 + 1) as usize] = 0;
+
+                image_buffer[(edge.to.vec_coord * 3) as usize] = 255;
+                image_buffer[(edge.to.vec_coord * 3 + 1) as usize] = 0;
+                image_buffer[(edge.to.vec_coord * 3 + 2) as usize] = 0;
+            }
         }
 
         writer.write_image_data(image_buffer).unwrap();
