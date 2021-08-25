@@ -76,6 +76,7 @@ impl Graph {
     }
 
     // if you add an edge with the same from and to node, it overwrites the weight
+    // NEEDS OPTIMIZATION
     pub fn add_edge(&mut self, from: &RefNode, to: &RefNode, weight: u32) {
         if !self.edges.contains_key(from) {
             self.edges.insert(
@@ -95,6 +96,25 @@ impl Graph {
                 }
             }
             edge_vec.push(Edge::from(Rc::clone(from), Rc::clone(to), weight))
+        }
+        if !self.edges.contains_key(to) {
+            self.edges.insert(
+                Rc::clone(to),
+                vec![Edge::from(Rc::clone(to), Rc::clone(from), weight)],
+            );
+        } else {
+            let edge_vec = self
+                .edges
+                .get_mut(to)
+                .expect("failed to unwrap vec in add_edge");
+            // if it finds this edge already exist, it overwrites it's weight and returns
+            for edge in edge_vec.iter_mut() {
+                if &edge.from == from {
+                    edge.weight = weight;
+                    return;
+                }
+            }
+            edge_vec.push(Edge::from(Rc::clone(to), Rc::clone(from), weight))
         }
     }
 

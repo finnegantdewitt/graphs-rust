@@ -86,20 +86,20 @@ fn main() {
     );
 
     // test maze load speed
-    // test_maze_generation_speed(
-    //     &buf,
-    //     info.width,
-    //     info.height,
-    //     info.color_type == png::ColorType::Grayscale,
-    // );
-
-    // load the maze
-    let mut maze = OptMaze::from(
+    test_maze_generation_speed(
         &buf,
         info.width,
         info.height,
         info.color_type == png::ColorType::Grayscale,
     );
+
+    // load the maze
+    // let mut maze = OptMaze::from(
+    //     &buf,
+    //     info.width,
+    //     info.height,
+    //     info.color_type == png::ColorType::Grayscale,
+    // );
     // maze.print();
-    maze.write_image(output_file, &mut buf, false);
+    // maze.write_image(output_file, &mut buf, false);
 }
