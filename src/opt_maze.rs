@@ -212,9 +212,9 @@ impl OptMaze {
                                 None => break,
                                 Some(to) => {
                                     graph.add_edge(&current_node, &to, above_idx);
+                                    break;
                                 }
                             }
-                            break;
                         }
                         let new_node =
                             &graph.add_node(x, y, xy_to_image_buff_location(x, y, height));
@@ -245,9 +245,9 @@ impl OptMaze {
                                 None => break,
                                 Some(to) => {
                                     graph.add_edge(&current_node, &to, below_idx);
+                                    break;
                                 }
                             }
-                            break;
                         }
                         let new_node =
                             &graph.add_node(x, y, xy_to_image_buff_location(x, y, height));
